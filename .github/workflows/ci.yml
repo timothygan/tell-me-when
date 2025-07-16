@@ -15,16 +15,19 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          node-version: 20
-      - name: Install dependencies
+          go-version: '1.22'
+      - name: Build Go backend
         run: |
-          if [ -f package.json ]; then npm ci; fi
-      - name: Run backend hello world (placeholder)
+          go build -v ./...
+      - name: Run Go backend tests (if present)
         run: |
-          echo "Hello from backend!"
+          if ls *.go 1> /dev/null 2>&1; then go test -v ./...; fi
+      - name: Run Go backend hello world
+        run: |
+          timeout 5s go run main.go || true
 
   build-frontend:
     runs-on: ubuntu-latest
