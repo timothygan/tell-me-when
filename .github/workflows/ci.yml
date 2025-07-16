@@ -4,9 +4,10 @@ on:
   push:
     branches: [main, master]
   pull_request:
-    branches: [main, master]
+    branches: ['**']
 
 jobs:
+  # Run backend build & test on all PRs and main/master pushes
   build-backend:
     runs-on: ubuntu-latest
     defaults:
@@ -29,6 +30,7 @@ jobs:
         run: |
           timeout 5s go run main.go || true
 
+  # Run frontend build on all PRs and main/master pushes
   build-frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -65,12 +67,11 @@ jobs:
     paths:
       - 'infrastructure/**'
 
+  # Example: Only run infra plan/apply on push to main/master
   terraform-plan-dev:
     name: "Terraform Plan (Dev)"
     runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'pull_request' && github.base_ref == 'dev') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/dev')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     needs: terraform-fmt
     steps:
       - name: Checkout code
@@ -87,11 +88,10 @@ jobs:
   terraform-apply-dev:
     name: "Terraform Apply (Dev)"
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     needs: terraform-plan-dev
     environment:
       name: dev
-      url: ${{ steps.deploy.outputs.url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -107,9 +107,7 @@ jobs:
   terraform-plan-staging:
     name: "Terraform Plan (Staging)"
     runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'pull_request' && github.base_ref == 'staging') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/staging')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     needs: terraform-fmt
     steps:
       - name: Checkout code
@@ -126,11 +124,10 @@ jobs:
   terraform-apply-staging:
     name: "Terraform Apply (Staging)"
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     needs: terraform-plan-staging
     environment:
       name: staging
-      url: ${{ steps.deploy.outputs.url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -146,9 +143,7 @@ jobs:
   terraform-plan-prod:
     name: "Terraform Plan (Prod)"
     runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'master')) ||
-      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'))
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     needs: terraform-fmt
     steps:
       - name: Checkout code
@@ -169,7 +164,6 @@ jobs:
     needs: terraform-plan-prod
     environment:
       name: production
-      url: ${{ steps.deploy.outputs.url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
