@@ -1,0 +1,33 @@
+# Node.js / Frontend
+node_modules/
+.npm/
+.env
+.next/
+.DS_Store
+package-lock.json
+
+# Go / Backend
+backend/bin/
+backend/.env
+backend/.DS_Store
+*.exe
+*.out
+*.test
+
+# Terraform / Infra
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# System
+.idea/
+.vscode/
+*.swp
+*~
+
+# Logs
+*.log
+
+# Misc
+frontend/.DS_Store
