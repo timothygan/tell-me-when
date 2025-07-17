@@ -2,16 +2,13 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 )
 
-func helloHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Hello World from the Go backend!")
-}
-
 func main() {
-	http.HandleFunc("/", helloHandler)
-	port := ":3001"
-	fmt.Printf("Go backend listening at http://localhost%s\n", port)
-	http.ListenAndServe(port, nil)
+	mux := setupRoutes()
+	port := 3001
+	fmt.Printf("Go backend listening at http://localhost:%d\n", port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), mux))
 }

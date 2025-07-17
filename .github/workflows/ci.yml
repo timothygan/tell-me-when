@@ -23,9 +23,9 @@ jobs:
       - name: Build Go backend
         run: |
           go build -v ./...
-      - name: Run Go backend tests (if present)
+      - name: Run all Go backend tests
         run: |
-          if ls *.go 1> /dev/null 2>&1; then go test -v ./...; fi
+          go test ./...
       - name: Run Go backend hello world
         run: |
           timeout 5s go run main.go || true
