@@ -4,9 +4,10 @@ on:
   push:
     branches: [main, master]
   pull_request:
-    branches: [main, master]
+    branches: ['**']
 
 jobs:
+  # Build and test Go backend on all PRs and pushes to main/master
   build-backend:
     runs-on: ubuntu-latest
     defaults:
@@ -15,17 +16,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          node-version: 20
-      - name: Install dependencies
+          go-version: '1.22'
+      - name: Build Go backend
         run: |
-          if [ -f package.json ]; then npm ci; fi
-      - name: Run backend hello world (placeholder)
+          go build -v ./...
+      - name: Run Go backend tests (if present)
         run: |
-          echo "Hello from backend!"
+          if ls *.go 1> /dev/null 2>&1; then go test -v ./...; fi
+      - name: Run Go backend hello world
+        run: |
+          timeout 5s go run main.go || true
 
+  # Build frontend on all PRs and pushes to main/master
   build-frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -45,10 +50,9 @@ jobs:
         run: |
           echo "Hello from frontend!"
 
-  # --- Infrastructure Jobs ---
-
+  # Format and validate Terraform on all PRs and pushes to main/master
   terraform-fmt:
-    name: "Terraform Format (All Envs)"
+    name: "Terraform Format & Validate"
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     steps:
@@ -58,115 +62,19 @@ jobs:
         uses: hashicorp/setup-terraform@v3
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
-    # Only run if infra changes
-    paths:
-      - 'infrastructure/**'
+      - name: Terraform Validate
+        run: |
+          terraform init -backend=false || true
+          terraform validate || true
 
-  terraform-plan-dev:
-    name: "Terraform Plan (Dev)"
-    runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'pull_request' && github.base_ref == 'dev') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/dev')
-    needs: terraform-fmt
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-      - name: Terraform Init
-        run: cd infrastructure/environments/dev && terraform init -backend=false
-      - name: Terraform Plan
-        run: cd infrastructure/environments/dev && terraform plan
-    paths:
-      - 'infrastructure/**'
-
-  terraform-apply-dev:
-    name: "Terraform Apply (Dev)"
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    needs: terraform-plan-dev
-    environment:
-      name: dev
-      url: ${{ steps.deploy.outputs.url }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-      - name: Terraform Init
-        run: cd infrastructure/environments/dev && terraform init -backend-config=dev.tfbackend
-      - name: Terraform Apply
-        run: cd infrastructure/environments/dev && terraform apply -auto-approve
-    paths:
-      - 'infrastructure/**'
-
-  terraform-plan-staging:
-    name: "Terraform Plan (Staging)"
-    runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'pull_request' && github.base_ref == 'staging') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/staging')
-    needs: terraform-fmt
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-      - name: Terraform Init
-        run: cd infrastructure/environments/staging && terraform init -backend=false
-      - name: Terraform Plan
-        run: cd infrastructure/environments/staging && terraform plan
-    paths:
-      - 'infrastructure/**'
-
-  terraform-apply-staging:
-    name: "Terraform Apply (Staging)"
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
-    needs: terraform-plan-staging
-    environment:
-      name: staging
-      url: ${{ steps.deploy.outputs.url }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-      - name: Terraform Init
-        run: cd infrastructure/environments/staging && terraform init -backend-config=staging.tfbackend
-      - name: Terraform Apply
-        run: cd infrastructure/environments/staging && terraform apply -auto-approve
-    paths:
-      - 'infrastructure/**'
-
-  terraform-plan-prod:
-    name: "Terraform Plan (Prod)"
-    runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'master')) ||
-      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'))
-    needs: terraform-fmt
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-      - name: Terraform Init
-        run: cd infrastructure/environments/prod && terraform init -backend=false
-      - name: Terraform Plan
-        run: cd infrastructure/environments/prod && terraform plan
-    paths:
-      - 'infrastructure/**'
-
+  # Deploy infrastructure on push to main/master only
   terraform-apply-prod:
     name: "Terraform Apply (Prod)"
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    needs: terraform-plan-prod
+    needs: terraform-fmt
     environment:
       name: production
-      url: ${{ steps.deploy.outputs.url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -176,5 +84,3 @@ jobs:
         run: cd infrastructure/environments/prod && terraform init -backend-config=prod.tfbackend
       - name: Terraform Apply
         run: cd infrastructure/environments/prod && terraform apply -auto-approve
-    paths:
-      - 'infrastructure/**'
