@@ -1,6 +1,6 @@
 # Tell Me When
 
-**“Tell Me When”** is a web application that notifies users when new, relevant information about an unknown future event becomes available. Users submit queries about events they want to track (e.g., “When will Figma’s stock be available for public purchase?”), and the app automatically checks for updates using AI, verifies the information, and notifies the user when a satisfactory answer is found.
+First attempt at vibe coding. The other day I saw the news that Figma planned to go public, and I was interested in buying stock. The exact date when the stock would drop was unknown, and I knew it was very unlikely I would check in every day just to check if their stock was available. Idea is to make an application that will take queries whose answers are not yet known, and push a notification to the user once that information is available. It'll query some LLM for the information, and use another LLM to verify that information is correct/satisfactory before notifying the user, and run on a schedule each day.
 
 ---
 
